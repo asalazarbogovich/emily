@@ -51,7 +51,6 @@ td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text)}
 tr:hover td{background:#fafafa}
 .btn{padding:7px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);background:var(--white);color:var(--text)}
 .btn.blue{background:var(--blue);border-color:var(--blue);color:#fff}
-.btn.green{background:var(--green);border-color:var(--green);color:#fff}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
 .filters select{padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text);background:var(--white)}
@@ -96,7 +95,7 @@ tr:hover td{background:#fafafa}
     <button class="nav-btn" onclick="showNav('avance',this)">📅 Avance</button>
   </div>
   <div class="main">
-    <div class="readonly-banner">🔒 Solo lectura — <span id="sync-status">Cargando datos...</span> <button class="btn" onclick="cargarDesdeSheets()" style="margin-left:8px;font-size:11px;padding:4px 10px">🔄 Actualizar</button></div>
+    <div class="readonly-banner">🔒 Solo lectura — <span id="sync-status">Cargando...</span> <button class="btn" onclick="cargarDesdeSheets()" style="margin-left:8px;font-size:11px;padding:4px 10px">🔄 Actualizar</button></div>
 
     <div id="nav-resumen">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
@@ -172,6 +171,25 @@ let chartLinea=null,chartTorta=null,chartRiego=null;
 function getRegistros(){try{return JSON.parse(localStorage.getItem(KEY_REGISTROS))||[];}catch(e){return[];}}
 function saveRegistros(d){localStorage.setItem(KEY_REGISTROS,JSON.stringify(d));}
 
+function parseFecha(str){
+  if(!str)return null;
+  const s=str.toString().trim();
+  const p=s.split('/');
+  if(p.length===3)return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
+  return null;
+}
+
+function fechaHoy(){
+  const h=new Date();
+  return`${h.getDate().toString().padStart(2,'0')}/${(h.getMonth()+1).toString().padStart(2,'0')}/${h.getFullYear()}`;
+}
+
+function mismaFecha(f1,f2){
+  const a=parseFecha(f1);const b=parseFecha(f2);
+  if(!a||!b)return false;
+  return a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
+}
+
 async function cargarDesdeSheets(){
   document.getElementById('sync-status').textContent='Actualizando...';
   try{
@@ -185,17 +203,17 @@ async function cargarDesdeSheets(){
         sector:r['Sector']||'',area:r['Área (ha)']||'',
         variedad:r['Variedad']||'',riego:r['Riego']||'',
         acopiadora:r['Acopiadora']||'',observaciones:r['Observaciones']||'',
-        estado:'Pendiente',fecha:r['Fecha']||'',hora:r['Hora']||''
+        estado:'Pendiente',fecha:r['Fecha']?r['Fecha'].toString().trim():'',hora:r['Hora']||''
       }));
       saveRegistros(registros);
       document.getElementById('sync-status').textContent='✅ '+registros.length+' registros cargados';
       renderResumen();
       if(document.getElementById('nav-registros').style.display!=='none'){updateFiltros();renderRegistros();}
-    } else {
+    }else{
       document.getElementById('sync-status').textContent='Sin datos aún';
     }
   }catch(e){
-    document.getElementById('sync-status').textContent='⚠️ Sin conexión — datos locales';
+    document.getElementById('sync-status').textContent='⚠️ Sin conexión';
   }
 }
 
@@ -235,7 +253,10 @@ function setPeriodo(p,btn){
 function filtrarPorPeriodo(d){
   const hoy=new Date();
   if(periodoActual==='dia'){return d.filter(r=>mismaFecha(r.fecha,fechaHoy()));}
-  if(periodoActual==='semana'){const ini=new Date(hoy);ini.setDate(hoy.getDate()-hoy.getDay()+1);ini.setHours(0,0,0,0);return d.filter(r=>{const f=parseFecha(r.fecha);return f&&f>=ini;});}
+  if(periodoActual==='semana'){
+    const ini=new Date(hoy);ini.setDate(hoy.getDate()-hoy.getDay()+1);ini.setHours(0,0,0,0);
+    return d.filter(r=>{const f=parseFecha(r.fecha);return f&&f>=ini;});
+  }
   return d;
 }
 
@@ -254,11 +275,22 @@ function renderResumen(){
 }
 
 function renderChartLinea(all,tecnicos){
-  const dias=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dias.push(d.toLocaleDateString('es-PE'));}
+  const dias=[];
+  for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);
+    dias.push(`${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`);}
   const colors=['#b45309','#16a34a','#2563eb','#dc2626'];
-  const datasets=tecnicos.map((t,i)=>({label:t,data:dias.map(dia=>all.filter(r=>r.tecnico===t&&r.fecha===dia).length),borderColor:colors[i%colors.length],backgroundColor:colors[i%colors.length]+'22',tension:.4,fill:true,pointRadius:4}));
+  const datasets=tecnicos.map((t,i)=>({
+    label:t,
+    data:dias.map(dia=>all.filter(r=>r.tecnico===t&&mismaFecha(r.fecha,dia)).length),
+    borderColor:colors[i%colors.length],backgroundColor:colors[i%colors.length]+'22',
+    tension:.4,fill:true,pointRadius:4
+  }));
   if(chartLinea)chartLinea.destroy();
-  chartLinea=new Chart(document.getElementById('chart-linea'),{type:'line',data:{labels:dias.map(d=>{const p=d.split('/');return p[0]+'/'+p[1];}),datasets},options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});
+  chartLinea=new Chart(document.getElementById('chart-linea'),{
+    type:'line',
+    data:{labels:dias.map(d=>{const p=d.split('/');return p[0]+'/'+p[1];}),datasets},
+    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
+  });
 }
 
 function renderChartTorta(d){
@@ -266,18 +298,25 @@ function renderChartTorta(d){
   const labels=Object.keys(varMap);const data=Object.values(varMap);
   const colors=['#b45309','#16a34a','#2563eb','#dc2626','#9333ea','#0891b2'];
   if(chartTorta)chartTorta.destroy();
-  chartTorta=new Chart(document.getElementById('chart-torta'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors.slice(0,labels.length),borderWidth:2}]},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});
+  chartTorta=new Chart(document.getElementById('chart-torta'),{
+    type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors.slice(0,labels.length),borderWidth:2}]},
+    options:{responsive:true,plugins:{legend:{position:'bottom'}}}
+  });
 }
 
 function renderChartRiego(d){
   const rMap={};d.forEach(r=>{if(r.riego)rMap[r.riego]=(rMap[r.riego]||0)+1;});
   if(chartRiego)chartRiego.destroy();
-  chartRiego=new Chart(document.getElementById('chart-riego'),{type:'bar',data:{labels:Object.keys(rMap),datasets:[{label:'Parcelas',data:Object.values(rMap),backgroundColor:['#b45309','#16a34a'],borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});
+  chartRiego=new Chart(document.getElementById('chart-riego'),{
+    type:'bar',data:{labels:Object.keys(rMap),datasets:[{label:'Parcelas',data:Object.values(rMap),backgroundColor:['#b45309','#16a34a'],borderRadius:6}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
+  });
 }
 
 function renderDetalleTecnico(d,tecnicos){
   const max=Math.max(...tecnicos.map(t=>d.filter(r=>r.tecnico===t).length),1);
-  const html=tecnicos.map(t=>{const cnt=d.filter(r=>r.tecnico===t).length;const pct=(cnt/max*100).toFixed(0);
+  const html=tecnicos.map(t=>{
+    const cnt=d.filter(r=>r.tecnico===t).length;const pct=(cnt/max*100).toFixed(0);
     return`<div class="tec-row"><div class="tec-avatar">${t.charAt(0)}</div><div class="tec-name">${t}</div><div class="bar-wrap2"><div class="bar-fill2" style="width:${pct}%"></div></div><div class="tec-count">${cnt} registro${cnt!==1?'s':''}</div></div>`;
   }).join('');
   document.getElementById('tec-detalle').innerHTML=html||'<div class="empty">Sin datos aún.</div>';
@@ -339,9 +378,16 @@ function renderAvance(){
   const d=getRegistros();const c=document.getElementById('avance-content');
   if(!d.length){c.innerHTML='<div class="empty">Sin registros.</div>';return;}
   const grupos={};
-  d.forEach(r=>{const fecha=parseFecha(r.fecha);if(!fecha)return;
-    let key='';if(avancePeriodo==='dia')key=r.fecha;if(avancePeriodo==='semana')key=semanaLabel(fecha);if(avancePeriodo==='mes')key=mesLabel(fecha);
-    if(!grupos[key])grupos[key]={};const tec=r.tecnico||'Sin técnico';if(!grupos[key][tec])grupos[key][tec]=0;grupos[key][tec]++;
+  d.forEach(r=>{
+    if(!r.fecha)return;
+    let key='';
+    if(avancePeriodo==='dia')key=r.fecha;
+    if(avancePeriodo==='semana')key=semanaLabel(parseFecha(r.fecha));
+    if(avancePeriodo==='mes')key=mesLabel(parseFecha(r.fecha));
+    if(!key)return;
+    if(!grupos[key])grupos[key]={};
+    const tec=r.tecnico||'Sin técnico';
+    if(!grupos[key][tec])grupos[key][tec]=0;grupos[key][tec]++;
   });
   const periodos=Object.keys(grupos).sort((a,b)=>sortPeriodo(a,b));
   const tecnicos=[...new Set(d.map(r=>r.tecnico||'Sin técnico'))].sort();
@@ -349,36 +395,28 @@ function renderAvance(){
   const maxTotal=Math.max(...totales,1);
   let html=`<div class="section"><div class="section-title">Registros por técnico</div><div class="tbl-wrap"><table><thead><tr><th>Período</th>`;
   tecnicos.forEach(t=>{html+=`<th>${t}</th>`;});html+=`<th>Total</th></tr></thead><tbody>`;
-  periodos.forEach((p,pi)=>{html+=`<tr><td><strong>${p}</strong></td>`;tecnicos.forEach(t=>{const v=grupos[p][t]||0;html+=`<td>${v>0?`<span style="font-weight:500;color:#b45309">${v}</span>`:'—'}</td>`;});html+=`<td><strong>${totales[pi]}</strong></td></tr>`;});
-  html+=`<tr style="background:#fafafa;font-weight:600"><td>Total</td>`;tecnicos.forEach(t=>{html+=`<td>${periodos.reduce((s,p)=>s+(grupos[p][t]||0),0)}</td>`;});html+=`<td>${d.length}</td></tr></tbody></table></div></div>`;
+  periodos.forEach((p,pi)=>{
+    html+=`<tr><td><strong>${p}</strong></td>`;
+    tecnicos.forEach(t=>{const v=grupos[p][t]||0;html+=`<td>${v>0?`<span style="font-weight:500;color:#b45309">${v}</span>`:'—'}</td>`;});
+    html+=`<td><strong>${totales[pi]}</strong></td></tr>`;
+  });
+  html+=`<tr style="background:#fafafa;font-weight:600"><td>Total</td>`;
+  tecnicos.forEach(t=>{html+=`<td>${periodos.reduce((s,p)=>s+(grupos[p][t]||0),0)}</td>`;});
+  html+=`<td>${d.length}</td></tr></tbody></table></div></div>`;
   html+=`<div class="section"><div class="section-title">Progreso por período</div><div style="display:flex;flex-direction:column;gap:12px">`;
-  periodos.forEach((p,pi)=>{const total=totales[pi];const pct=(total/maxTotal*100).toFixed(1);
+  periodos.forEach((p,pi)=>{
+    const total=totales[pi];const pct=(total/maxTotal*100).toFixed(1);
     html+=`<div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><strong>${p}</strong><span style="color:var(--text2)">${total} registro${total!==1?'s':''}</span></div>
     <div style="background:#f3f4f6;border-radius:99px;height:8px"><div style="background:#b45309;border-radius:99px;height:8px;width:${pct}%"></div></div>
     <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">`;
     tecnicos.forEach(t=>{const v=grupos[p][t]||0;if(v>0)html+=`<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:#fef3c7;color:#b45309">${t}: ${v}</span>`;});
-    html+=`</div></div>`;});
+    html+=`</div></div>`;
+  });
   html+=`</div></div>`;c.innerHTML=html;
 }
 
-function parseFecha(str){
-  if(!str)return null;
-  const s=str.toString().trim();
-  const p=s.split('/');
-  if(p.length===3)return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
-  return null;
-}
-function fechaHoy(){
-  const h=new Date();
-  return`${h.getDate().toString().padStart(2,'0')}/${(h.getMonth()+1).toString().padStart(2,'0')}/${h.getFullYear()}`;
-}
-function mismaFecha(f1,f2){
-  const a=parseFecha(f1);const b=parseFecha(f2);
-  if(!a||!b)return false;
-  return a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
-}
-function semanaLabel(d){const ini=new Date(d);ini.setDate(d.getDate()-d.getDay()+1);const fin=new Date(ini);fin.setDate(ini.getDate()+6);return`${ini.getDate().toString().padStart(2,'0')}/${(ini.getMonth()+1).toString().padStart(2,'0')} - ${fin.getDate().toString().padStart(2,'0')}/${(fin.getMonth()+1).toString().padStart(2,'0')}/${fin.getFullYear()}`;}
-function mesLabel(d){const m=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];return`${m[d.getMonth()]} ${d.getFullYear()}`;}
+function semanaLabel(d){if(!d)return'';const ini=new Date(d);ini.setDate(d.getDate()-d.getDay()+1);const fin=new Date(ini);fin.setDate(ini.getDate()+6);return`${ini.getDate().toString().padStart(2,'0')}/${(ini.getMonth()+1).toString().padStart(2,'0')} - ${fin.getDate().toString().padStart(2,'0')}/${(fin.getMonth()+1).toString().padStart(2,'0')}/${fin.getFullYear()}`;}
+function mesLabel(d){if(!d)return'';const m=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];return`${m[d.getMonth()]} ${d.getFullYear()}`;}
 function sortPeriodo(a,b){if(avancePeriodo==='dia'){const pa=a.split('/'),pb=b.split('/');return new Date(pa[2],pa[1]-1,pa[0])-new Date(pb[2],pb[1]-1,pb[0]);}return a.localeCompare(b);}
 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2200);}
