@@ -19,7 +19,6 @@ h1{font-size:20px;font-weight:600}
 .lfield label{display:block;font-size:13px;color:var(--text2);margin-bottom:5px}
 .lfield select,.lfield input{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--white);color:var(--text)}
 .btn-full{width:100%;padding:10px;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;border:none;background:var(--green);color:#fff;margin-top:4px}
-.btn-full:hover{opacity:.9}
 .err-msg{font-size:13px;color:var(--red);text-align:center;margin-top:8px;display:none}
 .app{display:none;max-width:600px;margin:0 auto;padding:0 0 80px}
 .topbar{background:var(--white);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
@@ -57,8 +56,6 @@ h1{font-size:20px;font-weight:600}
 .pill.acop{background:#dcfce7;color:#15803d;border-color:#86efac}
 .status-badge{font-size:11px;padding:3px 10px;border-radius:99px;font-weight:500}
 .status-badge.pendiente{background:var(--yellow-light);color:#b45309}
-.status-badge.aprobado{background:var(--green-light);color:#15803d}
-.status-badge.rechazado{background:var(--red-light);color:var(--red)}
 .reg-actions{display:flex;gap:6px;margin-top:8px}
 .btn-xs{padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:none;display:flex;align-items:center;gap:3px}
 .btn-xs.edit{color:var(--blue);border-color:#93c5fd}
@@ -83,9 +80,7 @@ h1{font-size:20px;font-weight:600}
     </div>
     <div class="lfield">
       <label>Selecciona tu nombre</label>
-      <select id="login-user">
-        <option value="">— Seleccionar técnico —</option>
-      </select>
+      <select id="login-user"><option value="">— Seleccionar técnico —</option></select>
     </div>
     <div class="lfield">
       <label>Contraseña de acceso</label>
@@ -159,7 +154,7 @@ h1{font-size:20px;font-weight:600}
           </div>
         </div>
         <div id="f-otra-wrap" style="display:none;margin-top:8px">
-          <div class="ff"><label>Especificar acopiadora</label><input type="text" id="f-otra-acop" placeholder="Nombre de la acopiadora"></div>
+          <div class="ff"><label>Especificar acopiadora</label><input type="text" id="f-otra-acop" placeholder="Nombre"></div>
         </div>
         <div style="margin-top:10px">
           <div class="ff"><label>Observaciones <span class="badge-opt">opcional</span></label><textarea id="f-obs" placeholder="Notas adicionales..."></textarea></div>
@@ -173,7 +168,10 @@ h1{font-size:20px;font-weight:600}
     <div id="tab-mis" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <span style="font-size:13px;color:var(--text2)">Tus registros guardados</span>
-        <button class="btn blue" onclick="exportarExcel()">📥 Descargar mi reporte Excel</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="sincronizar()" style="color:var(--green);border-color:var(--green)">☁️ Sincronizar</button>
+          <button class="btn blue" onclick="exportarExcel()">📥 Descargar Excel</button>
+        </div>
       </div>
       <div id="mis-lista"></div>
     </div>
@@ -196,9 +194,7 @@ h1{font-size:20px;font-weight:600}
       <div class="grid3">
         <div class="ff"><label>Área (ha) *</label><input type="number" id="e-area" step="0.01" min="0"></div>
         <div class="ff"><label>Variedad *</label>
-          <select id="e-variedad">
-            <option>Sabrina</option><option>Marisol</option><option>San Andrea</option>
-          </select>
+          <select id="e-variedad"><option>Sabrina</option><option>Marisol</option><option>San Andrea</option></select>
         </div>
         <div class="ff"><label>Riego *</label>
           <select id="e-riego"><option>Tecnificado</option><option>Gravedad</option></select>
@@ -230,7 +226,7 @@ h1{font-size:20px;font-weight:600}
 <script>
 const KEY_TECNICOS='fresa_tecnicos';
 const KEY_REGISTROS='fresa_registros';
-const SHEETS_URL='https://script.google.com/macros/s/AKfycbw74hog5RxO8d0mM5gB7ktkiX1Wd6CTyanSLvGfPRTM2MGYrSDDepv65Ky_8P7I5bH4jw/exec';
+const SHEETS_URL='https://script.google.com/macros/s/AKfycbxTwEZ5qgOX_WMxAC6gHiz7OJvbbgwRZ66AzUmWRq7UDwCGhAjYmh41ifmQNjTbPH1YxA/exec';
 
 function defaultTecnicos(){
   return[
@@ -307,54 +303,62 @@ function guardar(){
   const acopSel=document.getElementById('f-acopiadora').value;
   const acopiadora=acopSel==='Otros'?document.getElementById('f-otra-acop').value.trim():acopSel;
   const registro={
-    id:'reg_'+Date.now(),
-    tecnico_id:currentUser.id,tecnico:currentUser.nombre,
+    id:'reg_'+Date.now(),tecnico_id:currentUser.id,tecnico:currentUser.nombre,
     nombre:n,dni:document.getElementById('f-dni').value.trim(),
     telefono:document.getElementById('f-tel').value.trim(),
     zona:z,sector:s,area:parseFloat(a).toFixed(2),
     variedad:v,riego:r,acopiadora:acopiadora,
     observaciones:document.getElementById('f-obs').value.trim(),
-    estado:'Pendiente',
+    estado:'Pendiente',sincronizado:false,
     fecha:new Date().toLocaleDateString('es-PE'),
     hora:new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})
   };
-  const d=getRegistros();
-  d.push(registro);
-  saveRegistros(d);
-  limpiar();
-  renderMisRegistros();
-  showToast('✅ Registro guardado');
+  const d=getRegistros();d.push(registro);saveRegistros(d);
+  limpiar();renderMisRegistros();showToast('✅ Registro guardado');
   enviarASheets(registro);
 }
 
 function enviarASheets(registro){
-  if(!navigator.onLine){showToast('⚠️ Sin internet, guardado localmente');return;}
+  if(!navigator.onLine){showToast('⚠️ Sin internet — se sincronizará luego');return;}
   fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(registro)})
-  .then(()=>showToast('☁️ Enviado a Google Sheets'))
-  .catch(()=>showToast('⚠️ Error al enviar, guardado localmente'));
+  .then(()=>{marcarSincronizado(registro.id);showToast('☁️ Enviado a Google Sheets');})
+  .catch(()=>showToast('⚠️ Guardado localmente'));
+}
+
+function marcarSincronizado(id){
+  const d=getRegistros();const i=d.findIndex(r=>r.id===id);
+  if(i>=0){d[i].sincronizado=true;saveRegistros(d);}renderMisRegistros();
+}
+
+function sincronizar(){
+  const d=getRegistros().filter(r=>r.tecnico_id===currentUser.id&&!r.sincronizado);
+  if(!d.length){showToast('✅ Todo sincronizado');return;}
+  if(!navigator.onLine){showToast('⚠️ Sin internet');return;}
+  d.forEach(r=>{
+    fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)})
+    .then(()=>marcarSincronizado(r.id)).catch(()=>{});
+  });
+  showToast(`☁️ Sincronizando ${d.length} registro(s)...`);
 }
 
 function limpiar(){
   ['f-nombre','f-dni','f-tel','f-zona','f-sector','f-area','f-obs','f-otra-acop'].forEach(id=>{document.getElementById(id).value='';});
-  document.getElementById('f-variedad').value='';
-  document.getElementById('f-riego').value='';
-  document.getElementById('f-acopiadora').value='';
-  document.getElementById('f-otra-wrap').style.display='none';
+  document.getElementById('f-variedad').value='';document.getElementById('f-riego').value='';
+  document.getElementById('f-acopiadora').value='';document.getElementById('f-otra-wrap').style.display='none';
 }
 
 function renderMisRegistros(){
   if(!currentUser)return;
-  const all=getRegistros();
-  const d=all.filter(r=>r.tecnico_id===currentUser.id);
+  const all=getRegistros();const d=all.filter(r=>r.tecnico_id===currentUser.id);
   document.getElementById('mis-count').textContent=d.length;
   const c=document.getElementById('mis-lista');
-  if(!d.length){c.innerHTML='<div class="empty">📋 Aún no tienes registros guardados.</div>';return;}
+  if(!d.length){c.innerHTML='<div class="empty">📋 Aún no tienes registros.</div>';return;}
   c.innerHTML=d.map(r=>{
     const i=all.findIndex(x=>x.id===r.id);
     return`<div class="reg-card">
       <div class="reg-header">
         <div class="reg-name">${r.nombre}</div>
-        <span class="status-badge ${r.estado.toLowerCase()}">${r.estado}</span>
+        <span style="font-size:10px;color:${r.sincronizado?'#16a34a':'#f59e0b'}">${r.sincronizado?'☁️ Sync':'⏳ Pendiente'}</span>
       </div>
       <div class="reg-meta">
         <span class="pill zona">📍 ${r.zona} › ${r.sector}</span>
@@ -364,38 +368,26 @@ function renderMisRegistros(){
         ${r.acopiadora?`<span class="pill acop">🏭 ${r.acopiadora}</span>`:''}
       </div>
       <div style="font-size:11px;color:var(--text2)">${r.fecha} ${r.hora}${r.observaciones?' · '+r.observaciones:''}</div>
-      ${r.estado==='Pendiente'?`<div class="reg-actions">
+      <div class="reg-actions">
         <button class="btn-xs edit" onclick="abrirEdicion(${i})">✏️ Editar</button>
         <button class="btn-xs del" onclick="eliminar(${i})">🗑 Eliminar</button>
-      </div>`:'<div style="font-size:11px;color:var(--text2);margin-top:6px">Revisado por el administrador.</div>'}
+      </div>
     </div>`;
   }).join('');
 }
 
 function abrirEdicion(i){
   const r=getRegistros()[i];editIdx=i;
-  document.getElementById('e-nombre').value=r.nombre||'';
-  document.getElementById('e-dni').value=r.dni||'';
-  document.getElementById('e-tel').value=r.telefono||'';
-  document.getElementById('e-zona').value=r.zona||'';
-  document.getElementById('e-sector').value=r.sector||'';
-  document.getElementById('e-area').value=r.area||'';
-  document.getElementById('e-variedad').value=r.variedad||'Sabrina';
-  document.getElementById('e-riego').value=r.riego||'Tecnificado';
+  document.getElementById('e-nombre').value=r.nombre||'';document.getElementById('e-dni').value=r.dni||'';
+  document.getElementById('e-tel').value=r.telefono||'';document.getElementById('e-zona').value=r.zona||'';
+  document.getElementById('e-sector').value=r.sector||'';document.getElementById('e-area').value=r.area||'';
+  document.getElementById('e-variedad').value=r.variedad||'Sabrina';document.getElementById('e-riego').value=r.riego||'Tecnificado';
   document.getElementById('e-obs').value=r.observaciones||'';
   const listaAcop=['Mebol','Chavin','Virú','Santa Sofía','Frutos Tropicales',"Domino's",'Del Andes'];
   const acop=r.acopiadora||'';
-  if(listaAcop.includes(acop)){
-    document.getElementById('e-acopiadora').value=acop;
-    document.getElementById('e-otra-wrap').style.display='none';
-  }else if(acop){
-    document.getElementById('e-acopiadora').value='Otros';
-    document.getElementById('e-otra-acop').value=acop;
-    document.getElementById('e-otra-wrap').style.display='block';
-  }else{
-    document.getElementById('e-acopiadora').value='';
-    document.getElementById('e-otra-wrap').style.display='none';
-  }
+  if(listaAcop.includes(acop)){document.getElementById('e-acopiadora').value=acop;document.getElementById('e-otra-wrap').style.display='none';}
+  else if(acop){document.getElementById('e-acopiadora').value='Otros';document.getElementById('e-otra-acop').value=acop;document.getElementById('e-otra-wrap').style.display='block';}
+  else{document.getElementById('e-acopiadora').value='';document.getElementById('e-otra-wrap').style.display='none';}
   document.getElementById('modal-bg').classList.add('open');
 }
 
@@ -410,15 +402,11 @@ function guardarEdicion(){
   const acopSel=document.getElementById('e-acopiadora').value;
   const acopiadora=acopSel==='Otros'?document.getElementById('e-otra-acop').value.trim():acopSel;
   const d=getRegistros();
-  d[editIdx]={...d[editIdx],nombre:n,
-    dni:document.getElementById('e-dni').value.trim(),
-    telefono:document.getElementById('e-tel').value.trim(),
-    zona:z,sector:s,area:parseFloat(a).toFixed(2),
-    variedad:document.getElementById('e-variedad').value,
-    riego:document.getElementById('e-riego').value,
-    acopiadora:acopiadora,
-    observaciones:document.getElementById('e-obs').value.trim()
-  };
+  d[editIdx]={...d[editIdx],nombre:n,dni:document.getElementById('e-dni').value.trim(),
+    telefono:document.getElementById('e-tel').value.trim(),zona:z,sector:s,
+    area:parseFloat(a).toFixed(2),variedad:document.getElementById('e-variedad').value,
+    riego:document.getElementById('e-riego').value,acopiadora:acopiadora,
+    observaciones:document.getElementById('e-obs').value.trim(),sincronizado:false};
   saveRegistros(d);cerrarModal();renderMisRegistros();showToast('✅ Registro actualizado');
 }
 
@@ -433,15 +421,13 @@ function exportarExcel(){
   if(!d.length){showToast('No hay registros para exportar');return;}
   const rows=d.map(r=>({'Técnico':r.tecnico,'Nombre Agricultor':r.nombre,'DNI':r.dni||'','Teléfono':r.telefono||'','Zona':r.zona,'Sector':r.sector,'Área (ha)':parseFloat(r.area),'Variedad':r.variedad,'Riego':r.riego,'Acopiadora':r.acopiadora||'','Observaciones':r.observaciones||'','Estado':r.estado,'Fecha':r.fecha,'Hora':r.hora}));
   const ws=XLSX.utils.json_to_sheet(rows);
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Mis registros');
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Mis registros');
   XLSX.writeFile(wb,`reporte_${currentUser.nombre}_${new Date().toISOString().slice(0,10)}.xlsx`);
   showToast('📥 Excel descargado');
 }
 
 function showToast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.style.display='block';
+  const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';
   setTimeout(()=>t.style.display='none',2500);
 }
 
