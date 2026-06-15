@@ -39,7 +39,6 @@ h1{font-size:20px;font-weight:600}
 .ff label{font-size:12px;color:var(--text2)}
 .ff input,.ff select,.ff textarea{padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:14px;background:#fafafa;color:var(--text);width:100%}
 .ff textarea{resize:vertical;min-height:60px;font-family:inherit}
-.ff input:focus,.ff select:focus,.ff textarea:focus{outline:none;border-color:var(--green);background:var(--white)}
 .badge-opt{font-size:10px;color:var(--text2);margin-left:3px}
 .btn-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;border:1px solid var(--border);background:var(--white);color:var(--text)}
@@ -54,8 +53,6 @@ h1{font-size:20px;font-weight:600}
 .pill.var{background:#e0f2fe;color:#0369a1;border-color:#7dd3fc}
 .pill.area{background:#fef9c3;color:#b45309;border-color:#fde68a}
 .pill.acop{background:#dcfce7;color:#15803d;border-color:#86efac}
-.status-badge{font-size:11px;padding:3px 10px;border-radius:99px;font-weight:500}
-.status-badge.pendiente{background:var(--yellow-light);color:#b45309}
 .reg-actions{display:flex;gap:6px;margin-top:8px}
 .btn-xs{padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:none;display:flex;align-items:center;gap:3px}
 .btn-xs.edit{color:var(--blue);border-color:#93c5fd}
@@ -292,6 +289,11 @@ function toggleOtraAcopEdit(){
   document.getElementById('e-otra-wrap').style.display=v==='Otros'?'block':'none';
 }
 
+function fechaHoy(){
+  const h=new Date();
+  return h.getDate().toString().padStart(2,'0')+'/'+(h.getMonth()+1).toString().padStart(2,'0')+'/'+h.getFullYear();
+}
+
 function guardar(){
   const n=document.getElementById('f-nombre').value.trim();
   const z=document.getElementById('f-zona').value.trim();
@@ -310,7 +312,7 @@ function guardar(){
     variedad:v,riego:r,acopiadora:acopiadora,
     observaciones:document.getElementById('f-obs').value.trim(),
     estado:'Pendiente',sincronizado:false,
-    fecha:new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'}),
+    fecha:fechaHoy(),
     hora:new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})
   };
   const d=getRegistros();d.push(registro);saveRegistros(d);
@@ -338,7 +340,7 @@ function sincronizar(){
     fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)})
     .then(()=>marcarSincronizado(r.id)).catch(()=>{});
   });
-  showToast(`☁️ Sincronizando ${d.length} registro(s)...`);
+  showToast('☁️ Sincronizando '+d.length+' registro(s)...');
 }
 
 function limpiar(){
@@ -365,7 +367,7 @@ function renderMisRegistros(){
         <span class="pill area">🌿 ${r.area} ha</span>
         <span class="pill var">🍓 ${r.variedad}</span>
         <span class="pill">${r.riego}</span>
-        ${r.acopiadora?`<span class="pill acop">🏭 ${r.acopiadora}</span>`:''}
+        ${r.acopiadora?'<span class="pill acop">🏭 '+r.acopiadora+'</span>':''}
       </div>
       <div style="font-size:11px;color:var(--text2)">${r.fecha} ${r.hora}${r.observaciones?' · '+r.observaciones:''}</div>
       <div class="reg-actions">
@@ -378,10 +380,14 @@ function renderMisRegistros(){
 
 function abrirEdicion(i){
   const r=getRegistros()[i];editIdx=i;
-  document.getElementById('e-nombre').value=r.nombre||'';document.getElementById('e-dni').value=r.dni||'';
-  document.getElementById('e-tel').value=r.telefono||'';document.getElementById('e-zona').value=r.zona||'';
-  document.getElementById('e-sector').value=r.sector||'';document.getElementById('e-area').value=r.area||'';
-  document.getElementById('e-variedad').value=r.variedad||'Sabrina';document.getElementById('e-riego').value=r.riego||'Tecnificado';
+  document.getElementById('e-nombre').value=r.nombre||'';
+  document.getElementById('e-dni').value=r.dni||'';
+  document.getElementById('e-tel').value=r.telefono||'';
+  document.getElementById('e-zona').value=r.zona||'';
+  document.getElementById('e-sector').value=r.sector||'';
+  document.getElementById('e-area').value=r.area||'';
+  document.getElementById('e-variedad').value=r.variedad||'Sabrina';
+  document.getElementById('e-riego').value=r.riego||'Tecnificado';
   document.getElementById('e-obs').value=r.observaciones||'';
   const listaAcop=['Mebol','Chavin','Virú','Santa Sofía','Frutos Tropicales',"Domino's",'Del Andes'];
   const acop=r.acopiadora||'';
@@ -415,11 +421,10 @@ function eliminar(i){
   const d=getRegistros();
   const registro=d[i];
   d.splice(i,1);saveRegistros(d);renderMisRegistros();showToast('Registro eliminado');
-  // Borrar también del Sheet si está sincronizado
   if(registro.sincronizado&&navigator.onLine){
-    fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'delete',id:registro.id})
-    }).catch(()=>{});
+    fetch(SHEETS_URL+'?action=delete&id='+registro.id)
+    .then(()=>showToast('✅ Eliminado del servidor'))
+    .catch(()=>{});
   }
 }
 
@@ -430,7 +435,7 @@ function exportarExcel(){
   const rows=d.map(r=>({'Técnico':r.tecnico,'Nombre Agricultor':r.nombre,'DNI':r.dni||'','Teléfono':r.telefono||'','Zona':r.zona,'Sector':r.sector,'Área (ha)':parseFloat(r.area),'Variedad':r.variedad,'Riego':r.riego,'Acopiadora':r.acopiadora||'','Observaciones':r.observaciones||'','Estado':r.estado,'Fecha':r.fecha,'Hora':r.hora}));
   const ws=XLSX.utils.json_to_sheet(rows);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Mis registros');
-  XLSX.writeFile(wb,`reporte_${currentUser.nombre}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  XLSX.writeFile(wb,'reporte_'+currentUser.nombre+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
   showToast('📥 Excel descargado');
 }
 
