@@ -412,7 +412,15 @@ function guardarEdicion(){
 
 function eliminar(i){
   if(!confirm('¿Eliminar este registro?'))return;
-  const d=getRegistros();d.splice(i,1);saveRegistros(d);renderMisRegistros();showToast('Registro eliminado');
+  const d=getRegistros();
+  const registro=d[i];
+  d.splice(i,1);saveRegistros(d);renderMisRegistros();showToast('Registro eliminado');
+  // Borrar también del Sheet si está sincronizado
+  if(registro.sincronizado&&navigator.onLine){
+    fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'delete',id:registro.id})
+    }).catch(()=>{});
+  }
 }
 
 function exportarExcel(){
