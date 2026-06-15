@@ -234,7 +234,7 @@ function setPeriodo(p,btn){
 
 function filtrarPorPeriodo(d){
   const hoy=new Date();
-  if(periodoActual==='dia'){const hoyStr=hoy.toLocaleDateString('es-PE');return d.filter(r=>r.fecha===hoyStr);}
+  if(periodoActual==='dia'){return d.filter(r=>mismaFecha(r.fecha,fechaHoy()));}
   if(periodoActual==='semana'){const ini=new Date(hoy);ini.setDate(hoy.getDate()-hoy.getDay()+1);ini.setHours(0,0,0,0);return d.filter(r=>{const f=parseFecha(r.fecha);return f&&f>=ini;});}
   return d;
 }
@@ -361,7 +361,22 @@ function renderAvance(){
   html+=`</div></div>`;c.innerHTML=html;
 }
 
-function parseFecha(str){if(!str)return null;const p=str.split('/');if(p.length===3)return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));return null;}
+function parseFecha(str){
+  if(!str)return null;
+  const s=str.toString().trim();
+  const p=s.split('/');
+  if(p.length===3)return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
+  return null;
+}
+function fechaHoy(){
+  const h=new Date();
+  return`${h.getDate().toString().padStart(2,'0')}/${(h.getMonth()+1).toString().padStart(2,'0')}/${h.getFullYear()}`;
+}
+function mismaFecha(f1,f2){
+  const a=parseFecha(f1);const b=parseFecha(f2);
+  if(!a||!b)return false;
+  return a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
+}
 function semanaLabel(d){const ini=new Date(d);ini.setDate(d.getDate()-d.getDay()+1);const fin=new Date(ini);fin.setDate(ini.getDate()+6);return`${ini.getDate().toString().padStart(2,'0')}/${(ini.getMonth()+1).toString().padStart(2,'0')} - ${fin.getDate().toString().padStart(2,'0')}/${(fin.getMonth()+1).toString().padStart(2,'0')}/${fin.getFullYear()}`;}
 function mesLabel(d){const m=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];return`${m[d.getMonth()]} ${d.getFullYear()}`;}
 function sortPeriodo(a,b){if(avancePeriodo==='dia'){const pa=a.split('/'),pb=b.split('/');return new Date(pa[2],pa[1]-1,pa[0])-new Date(pb[2],pb[1]-1,pb[0]);}return a.localeCompare(b);}
