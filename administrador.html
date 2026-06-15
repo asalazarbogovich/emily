@@ -171,6 +171,17 @@ let chartLinea=null,chartTorta=null,chartRiego=null;
 function getRegistros(){try{return JSON.parse(localStorage.getItem(KEY_REGISTROS))||[];}catch(e){return[];}}
 function saveRegistros(d){localStorage.setItem(KEY_REGISTROS,JSON.stringify(d));}
 
+function formatearFechaObj(fecha){
+  if(!fecha)return'';
+  // Si es objeto Date o string tipo "Mon Jun 15 2026..."
+  const d=new Date(fecha);
+  if(!isNaN(d.getTime())){
+    return`${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+  }
+  // Si ya es string con formato dd/mm/yyyy
+  return fecha.toString().trim();
+}
+
 function parseFecha(str){
   if(!str)return null;
   const s=str.toString().trim();
@@ -210,7 +221,9 @@ async function cargarDesdeSheets(){
         sector:r['Sector']||'',area:r['Área (ha)']||'',
         variedad:r['Variedad']||'',riego:r['Riego']||'',
         acopiadora:r['Acopiadora']||'',observaciones:r['Observaciones']||'',
-        estado:'Pendiente',fecha:r['Fecha']?r['Fecha'].toString().trim():'',hora:r['Hora']||''
+        estado:'Pendiente',
+        fecha:formatearFechaObj(r['Fecha']),
+        hora:r['Hora']||''
       }));
       saveRegistros(registros);
       document.getElementById('sync-status').textContent='✅ '+registros.length+' registros cargados';
