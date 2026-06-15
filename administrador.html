@@ -40,7 +40,7 @@ h1{font-size:20px;font-weight:600}
 .pbtn{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--white);color:var(--text2)}
 .pbtn.active{background:#b45309;border-color:#b45309;color:#fff}
 .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-@media(max-width:600px){.charts-grid{grid-column:1fr}}
+@media(max-width:600px){.charts-grid{grid-template-columns:1fr}}
 .chart-box{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px}
 .chart-title{font-size:13px;font-weight:500;color:var(--text2);margin-bottom:12px}
 canvas{max-height:220px}
@@ -49,12 +49,9 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;padding:9px 10px;color:var(--text2);border-bottom:1px solid var(--border);font-weight:500;background:#fafafa}
 td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text)}
 tr:hover td{background:#fafafa}
-.status-badge{font-size:11px;padding:3px 10px;border-radius:99px;font-weight:500;white-space:nowrap}
-.status-badge.pendiente{background:var(--yellow-light);color:#b45309}
-.status-badge.aprobado{background:var(--green-light);color:#15803d}
-.status-badge.rechazado{background:var(--red-light);color:var(--red)}
 .btn{padding:7px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);background:var(--white);color:var(--text)}
 .btn.blue{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.green{background:var(--green);border-color:var(--green);color:#fff}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
 .filters select{padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text);background:var(--white)}
@@ -94,12 +91,12 @@ tr:hover td{background:#fafafa}
     <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
   </div>
   <div class="nav">
-    <button class="nav-btn active" onclick="showNav('resumen',this)">📊 Resumen y gráficos</button>
+    <button class="nav-btn active" onclick="showNav('resumen',this)">📊 Resumen</button>
     <button class="nav-btn" onclick="showNav('registros',this)">📋 Registros</button>
     <button class="nav-btn" onclick="showNav('avance',this)">📅 Avance</button>
   </div>
   <div class="main">
-    <div class="readonly-banner">🔒 Panel de solo lectura — visualización sin modificaciones.</div>
+    <div class="readonly-banner">🔒 Solo lectura — <span id="sync-status">Cargando datos...</span> <button class="btn" onclick="cargarDesdeSheets()" style="margin-left:8px;font-size:11px;padding:4px 10px">🔄 Actualizar</button></div>
 
     <div id="nav-resumen">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
@@ -113,7 +110,7 @@ tr:hover td{background:#fafafa}
       <div id="stats-cards"></div>
       <div class="charts-grid">
         <div class="chart-box" style="grid-column:1/-1">
-          <div class="chart-title">📈 Avance de agricultores visitados por técnico (últimos 7 días)</div>
+          <div class="chart-title">📈 Avance de agricultores visitados por técnico</div>
           <canvas id="chart-linea"></canvas>
         </div>
         <div class="chart-box">
@@ -167,11 +164,40 @@ tr:hover td{background:#fafafa}
 
 <script>
 const ADMIN_PASS='annya';
-const KEY_REGISTROS='fresa_registros';
+const KEY_REGISTROS='fresa_registros_admin';
+const SHEETS_URL='https://script.google.com/macros/s/AKfycbxTwEZ5qgOX_WMxAC6gHiz7OJvbbgwRZ66AzUmWRq7UDwCGhAjYmh41ifmQNjTbPH1YxA/exec';
 let periodoActual='dia';
 let chartLinea=null,chartTorta=null,chartRiego=null;
 
 function getRegistros(){try{return JSON.parse(localStorage.getItem(KEY_REGISTROS))||[];}catch(e){return[];}}
+function saveRegistros(d){localStorage.setItem(KEY_REGISTROS,JSON.stringify(d));}
+
+async function cargarDesdeSheets(){
+  document.getElementById('sync-status').textContent='Actualizando...';
+  try{
+    const res=await fetch(SHEETS_URL+'?t='+Date.now());
+    const data=await res.json();
+    if(Array.isArray(data)&&data.length){
+      const registros=data.map((r,i)=>({
+        id:'sheet_'+i,tecnico:r['Técnico']||'',tecnico_id:'sheet',
+        nombre:r['Nombre Agricultor']||'',dni:r['DNI']||'',
+        telefono:r['Teléfono']||'',zona:r['Zona']||'',
+        sector:r['Sector']||'',area:r['Área (ha)']||'',
+        variedad:r['Variedad']||'',riego:r['Riego']||'',
+        acopiadora:r['Acopiadora']||'',observaciones:r['Observaciones']||'',
+        estado:'Pendiente',fecha:r['Fecha']||'',hora:r['Hora']||''
+      }));
+      saveRegistros(registros);
+      document.getElementById('sync-status').textContent='✅ '+registros.length+' registros cargados';
+      renderResumen();
+      if(document.getElementById('nav-registros').style.display!=='none'){updateFiltros();renderRegistros();}
+    } else {
+      document.getElementById('sync-status').textContent='Sin datos aún';
+    }
+  }catch(e){
+    document.getElementById('sync-status').textContent='⚠️ Sin conexión — datos locales';
+  }
+}
 
 function doAdminLogin(){
   const p=document.getElementById('admin-pass').value;
@@ -180,6 +206,7 @@ function doAdminLogin(){
   err.style.display='none';
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app-screen').style.display='block';
+  cargarDesdeSheets();
   setPeriodo('dia',document.querySelector('.pbtn.active'));
 }
 
@@ -202,8 +229,7 @@ function showNav(tab,btn){
 function setPeriodo(p,btn){
   periodoActual=p;
   document.querySelectorAll('#nav-resumen .pbtn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  renderResumen();
+  btn.classList.add('active');renderResumen();
 }
 
 function filtrarPorPeriodo(d){
@@ -214,8 +240,7 @@ function filtrarPorPeriodo(d){
 }
 
 function renderResumen(){
-  const all=getRegistros();
-  const d=filtrarPorPeriodo(all);
+  const all=getRegistros();const d=filtrarPorPeriodo(all);
   const label=periodoActual==='dia'?'hoy':periodoActual==='semana'?'esta semana':'total';
   const tecnicos=[...new Set(all.map(r=>r.tecnico).filter(Boolean))];
   const totalArea=d.reduce((s,r)=>s+parseFloat(r.area||0),0);
@@ -225,26 +250,15 @@ function renderResumen(){
     <div class="stat-card"><div class="stat-label">📋 Parcelas (${label})</div><div class="stat-val">${d.length}</div></div>
     <div class="stat-card"><div class="stat-label">🌿 Área (${label})</div><div class="stat-val">${totalArea.toFixed(2)}</div><div class="stat-sub">ha</div></div>
   </div>`;
-  renderChartLinea(all,tecnicos);
-  renderChartTorta(d);
-  renderChartRiego(d);
-  renderDetalleTecnico(d,tecnicos);
+  renderChartLinea(all,tecnicos);renderChartTorta(d);renderChartRiego(d);renderDetalleTecnico(d,tecnicos);
 }
 
 function renderChartLinea(all,tecnicos){
-  const dias=[];
-  for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dias.push(d.toLocaleDateString('es-PE'));}
+  const dias=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dias.push(d.toLocaleDateString('es-PE'));}
   const colors=['#b45309','#16a34a','#2563eb','#dc2626'];
-  const datasets=tecnicos.map((t,i)=>({
-    label:t,data:dias.map(dia=>all.filter(r=>r.tecnico===t&&r.fecha===dia).length),
-    borderColor:colors[i%colors.length],backgroundColor:colors[i%colors.length]+'22',
-    tension:.4,fill:true,pointRadius:4
-  }));
+  const datasets=tecnicos.map((t,i)=>({label:t,data:dias.map(dia=>all.filter(r=>r.tecnico===t&&r.fecha===dia).length),borderColor:colors[i%colors.length],backgroundColor:colors[i%colors.length]+'22',tension:.4,fill:true,pointRadius:4}));
   if(chartLinea)chartLinea.destroy();
-  chartLinea=new Chart(document.getElementById('chart-linea'),{
-    type:'line',data:{labels:dias.map(d=>{const p=d.split('/');return p[0]+'/'+p[1];}),datasets},
-    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
-  });
+  chartLinea=new Chart(document.getElementById('chart-linea'),{type:'line',data:{labels:dias.map(d=>{const p=d.split('/');return p[0]+'/'+p[1];}),datasets},options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});
 }
 
 function renderChartTorta(d){
@@ -252,34 +266,21 @@ function renderChartTorta(d){
   const labels=Object.keys(varMap);const data=Object.values(varMap);
   const colors=['#b45309','#16a34a','#2563eb','#dc2626','#9333ea','#0891b2'];
   if(chartTorta)chartTorta.destroy();
-  chartTorta=new Chart(document.getElementById('chart-torta'),{
-    type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors.slice(0,labels.length),borderWidth:2}]},
-    options:{responsive:true,plugins:{legend:{position:'bottom'}}}
-  });
+  chartTorta=new Chart(document.getElementById('chart-torta'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors.slice(0,labels.length),borderWidth:2}]},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});
 }
 
 function renderChartRiego(d){
   const rMap={};d.forEach(r=>{if(r.riego)rMap[r.riego]=(rMap[r.riego]||0)+1;});
   if(chartRiego)chartRiego.destroy();
-  chartRiego=new Chart(document.getElementById('chart-riego'),{
-    type:'bar',data:{labels:Object.keys(rMap),datasets:[{label:'Parcelas',data:Object.values(rMap),backgroundColor:['#b45309','#16a34a'],borderRadius:6}]},
-    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
-  });
+  chartRiego=new Chart(document.getElementById('chart-riego'),{type:'bar',data:{labels:Object.keys(rMap),datasets:[{label:'Parcelas',data:Object.values(rMap),backgroundColor:['#b45309','#16a34a'],borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});
 }
 
 function renderDetalleTecnico(d,tecnicos){
   const max=Math.max(...tecnicos.map(t=>d.filter(r=>r.tecnico===t).length),1);
-  const html=tecnicos.map(t=>{
-    const cnt=d.filter(r=>r.tecnico===t).length;
-    const pct=(cnt/max*100).toFixed(0);
-    return`<div class="tec-row">
-      <div class="tec-avatar">${t.charAt(0)}</div>
-      <div class="tec-name">${t}</div>
-      <div class="bar-wrap2"><div class="bar-fill2" style="width:${pct}%"></div></div>
-      <div class="tec-count">${cnt} registro${cnt!==1?'s':''}</div>
-    </div>`;
+  const html=tecnicos.map(t=>{const cnt=d.filter(r=>r.tecnico===t).length;const pct=(cnt/max*100).toFixed(0);
+    return`<div class="tec-row"><div class="tec-avatar">${t.charAt(0)}</div><div class="tec-name">${t}</div><div class="bar-wrap2"><div class="bar-fill2" style="width:${pct}%"></div></div><div class="tec-count">${cnt} registro${cnt!==1?'s':''}</div></div>`;
   }).join('');
-  document.getElementById('tec-detalle').innerHTML=html||'<div class="empty">Sin datos.</div>';
+  document.getElementById('tec-detalle').innerHTML=html||'<div class="empty">Sin datos aún.</div>';
 }
 
 function updateFiltros(){
@@ -303,15 +304,12 @@ function getFiltered(){
   const t=document.getElementById('fil-tecnico').value;
   const z=document.getElementById('fil-zona').value;
   const s=document.getElementById('fil-sector').value;
-  if(t)d=d.filter(r=>r.tecnico===t);
-  if(z)d=d.filter(r=>r.zona===z);
-  if(s)d=d.filter(r=>r.sector===s);
+  if(t)d=d.filter(r=>r.tecnico===t);if(z)d=d.filter(r=>r.zona===z);if(s)d=d.filter(r=>r.sector===s);
   return d;
 }
 
 function renderRegistros(){
-  const d=getFiltered();
-  const tb=document.getElementById('reg-tbody');
+  const d=getFiltered();const tb=document.getElementById('reg-tbody');
   if(!d.length){tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text2)">Sin registros.</td></tr>';return;}
   tb.innerHTML=d.map(r=>`<tr>
     <td>${r.tecnico||'—'}</td><td>${r.nombre||'—'}</td><td>${r.dni||'—'}</td><td>${r.telefono||'—'}</td>
@@ -323,12 +321,9 @@ function renderRegistros(){
 
 function buildExcel(d,nombre){
   if(!d.length){showToast('No hay registros para exportar');return;}
-  const rows=d.map(r=>({'Técnico':r.tecnico||'','Agricultor':r.nombre,'DNI':r.dni||'','Teléfono':r.telefono||'','Zona':r.zona,'Sector':r.sector,'Área (ha)':parseFloat(r.area),'Variedad':r.variedad,'Riego':r.riego,'Acopiadora':r.acopiadora||'','Observaciones':r.observaciones||'','Fecha':r.fecha,'Hora':r.hora||''}));
-  const ws=XLSX.utils.json_to_sheet(rows);
-  ws['!cols']=[{wch:14},{wch:22},{wch:10},{wch:13},{wch:13},{wch:12},{wch:10},{wch:12},{wch:13},{wch:15},{wch:22},{wch:12},{wch:8}];
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Registros');
-  XLSX.writeFile(wb,nombre+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
-  showToast('📥 Excel descargado');
+  const rows=d.map(r=>({'Técnico':r.tecnico||'','Agricultor':r.nombre,'DNI':r.dni||'','Teléfono':r.telefono||'','Zona':r.zona,'Sector':r.sector,'Área (ha)':parseFloat(r.area||0),'Variedad':r.variedad,'Riego':r.riego,'Acopiadora':r.acopiadora||'','Observaciones':r.observaciones||'','Fecha':r.fecha,'Hora':r.hora||''}));
+  const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Registros');
+  XLSX.writeFile(wb,nombre+'_'+new Date().toISOString().slice(0,10)+'.xlsx');showToast('📥 Excel descargado');
 }
 
 function exportarExcel(){buildExcel(filtrarPorPeriodo(getRegistros()),'reporte_emily');}
@@ -336,8 +331,7 @@ function exportarExcelFiltrado(){buildExcel(getFiltered(),'reporte_filtrado');}
 
 let avancePeriodo='dia';
 function setAvance(p,btn){
-  avancePeriodo=p;
-  document.querySelectorAll('#nav-avance .pbtn').forEach(b=>b.classList.remove('active'));
+  avancePeriodo=p;document.querySelectorAll('#nav-avance .pbtn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');renderAvance();
 }
 
@@ -345,15 +339,9 @@ function renderAvance(){
   const d=getRegistros();const c=document.getElementById('avance-content');
   if(!d.length){c.innerHTML='<div class="empty">Sin registros.</div>';return;}
   const grupos={};
-  d.forEach(r=>{
-    const fecha=parseFecha(r.fecha);if(!fecha)return;
-    let key='';
-    if(avancePeriodo==='dia')key=r.fecha;
-    if(avancePeriodo==='semana')key=semanaLabel(fecha);
-    if(avancePeriodo==='mes')key=mesLabel(fecha);
-    if(!grupos[key])grupos[key]={};
-    const tec=r.tecnico||'Sin técnico';
-    if(!grupos[key][tec])grupos[key][tec]=0;grupos[key][tec]++;
+  d.forEach(r=>{const fecha=parseFecha(r.fecha);if(!fecha)return;
+    let key='';if(avancePeriodo==='dia')key=r.fecha;if(avancePeriodo==='semana')key=semanaLabel(fecha);if(avancePeriodo==='mes')key=mesLabel(fecha);
+    if(!grupos[key])grupos[key]={};const tec=r.tecnico||'Sin técnico';if(!grupos[key][tec])grupos[key][tec]=0;grupos[key][tec]++;
   });
   const periodos=Object.keys(grupos).sort((a,b)=>sortPeriodo(a,b));
   const tecnicos=[...new Set(d.map(r=>r.tecnico||'Sin técnico'))].sort();
@@ -361,23 +349,15 @@ function renderAvance(){
   const maxTotal=Math.max(...totales,1);
   let html=`<div class="section"><div class="section-title">Registros por técnico</div><div class="tbl-wrap"><table><thead><tr><th>Período</th>`;
   tecnicos.forEach(t=>{html+=`<th>${t}</th>`;});html+=`<th>Total</th></tr></thead><tbody>`;
-  periodos.forEach((p,pi)=>{
-    html+=`<tr><td><strong>${p}</strong></td>`;
-    tecnicos.forEach(t=>{const v=grupos[p][t]||0;html+=`<td>${v>0?`<span style="font-weight:500;color:#b45309">${v}</span>`:'—'}</td>`;});
-    html+=`<td><strong>${totales[pi]}</strong></td></tr>`;
-  });
-  html+=`<tr style="background:#fafafa;font-weight:600"><td>Total</td>`;
-  tecnicos.forEach(t=>{html+=`<td>${periodos.reduce((s,p)=>s+(grupos[p][t]||0),0)}</td>`;});
-  html+=`<td>${d.length}</td></tr></tbody></table></div></div>`;
+  periodos.forEach((p,pi)=>{html+=`<tr><td><strong>${p}</strong></td>`;tecnicos.forEach(t=>{const v=grupos[p][t]||0;html+=`<td>${v>0?`<span style="font-weight:500;color:#b45309">${v}</span>`:'—'}</td>`;});html+=`<td><strong>${totales[pi]}</strong></td></tr>`;});
+  html+=`<tr style="background:#fafafa;font-weight:600"><td>Total</td>`;tecnicos.forEach(t=>{html+=`<td>${periodos.reduce((s,p)=>s+(grupos[p][t]||0),0)}</td>`;});html+=`<td>${d.length}</td></tr></tbody></table></div></div>`;
   html+=`<div class="section"><div class="section-title">Progreso por período</div><div style="display:flex;flex-direction:column;gap:12px">`;
-  periodos.forEach((p,pi)=>{
-    const total=totales[pi];const pct=(total/maxTotal*100).toFixed(1);
+  periodos.forEach((p,pi)=>{const total=totales[pi];const pct=(total/maxTotal*100).toFixed(1);
     html+=`<div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><strong>${p}</strong><span style="color:var(--text2)">${total} registro${total!==1?'s':''}</span></div>
     <div style="background:#f3f4f6;border-radius:99px;height:8px"><div style="background:#b45309;border-radius:99px;height:8px;width:${pct}%"></div></div>
     <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">`;
     tecnicos.forEach(t=>{const v=grupos[p][t]||0;if(v>0)html+=`<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:#fef3c7;color:#b45309">${t}: ${v}</span>`;});
-    html+=`</div></div>`;
-  });
+    html+=`</div></div>`;});
   html+=`</div></div>`;c.innerHTML=html;
 }
 
