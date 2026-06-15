@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formulario de trabajo — Empresa Emily</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#16a34a;--green-light:#dcfce7;--yellow:#f59e0b;--yellow-light:#fef9c3;--red:#dc2626;--red-light:#fee2e2;--blue:#2563eb;--blue-light:#dbeafe;--bg:#f9fafb;--white:#fff;--border:#e5e7eb;--text:#111827;--text2:#6b7280}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.login-card{background:var(--white);border-radius:16px;padding:2rem;width:100%;max-width:360px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.login-logo{text-align:center;margin-bottom:1.5rem}
+.icon{width:56px;height:56px;background:var(--green-light);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:28px}
+h1{font-size:20px;font-weight:600}
+.login-logo p{font-size:13px;color:var(--text2);margin-top:4px}
+.lfield{margin-bottom:14px}
+.lfield label{display:block;font-size:13px;color:var(--text2);margin-bottom:5px}
+.lfield select,.lfield input{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--white);color:var(--text)}
+.btn-full{width:100%;padding:10px;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;border:none;background:var(--green);color:#fff;margin-top:4px}
+.btn-full:hover{opacity:.9}
+.err-msg{font-size:13px;color:var(--red);text-align:center;margin-top:8px;display:none}
+.app{display:none;max-width:600px;margin:0 auto;padding:0 0 80px}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-icon{width:34px;height:34px;background:var(--green-light);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.topbar-name{font-size:15px;font-weight:500}
+.topbar-zona{font-size:12px;color:var(--text2)}
+.btn-logout{font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--text2)}
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--white);position:sticky;top:57px;z-index:9}
+.tab{flex:1;padding:10px;font-size:14px;border:none;background:none;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent}
+.tab.active{color:var(--green);border-bottom-color:var(--green);font-weight:500}
+.content{padding:16px}
+.section{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+.section-title{font-size:12px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.ff{display:flex;flex-direction:column;gap:4px}
+.ff label{font-size:12px;color:var(--text2)}
+.ff input,.ff select,.ff textarea{padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:14px;background:#fafafa;color:var(--text);width:100%}
+.ff textarea{resize:vertical;min-height:60px;font-family:inherit}
+.ff input:focus,.ff select:focus,.ff textarea:focus{outline:none;border-color:var(--green);background:var(--white)}
+.badge-opt{font-size:10px;color:var(--text2);margin-left:3px}
+.btn-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;border:1px solid var(--border);background:var(--white);color:var(--text)}
+.btn.green{background:var(--green);border-color:var(--green);color:#fff}
+.btn.blue{background:var(--blue);border-color:var(--blue);color:#fff}
+.reg-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px}
+.reg-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.reg-name{font-size:14px;font-weight:500}
+.reg-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.pill{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--bg);border:1px solid var(--border);color:var(--text2)}
+.pill.zona{background:#ede9fe;color:#7c3aed;border-color:#c4b5fd}
+.pill.var{background:#e0f2fe;color:#0369a1;border-color:#7dd3fc}
+.pill.area{background:#fef9c3;color:#b45309;border-color:#fde68a}
+.pill.acop{background:#dcfce7;color:#15803d;border-color:#86efac}
+.status-badge{font-size:11px;padding:3px 10px;border-radius:99px;font-weight:500}
+.status-badge.pendiente{background:var(--yellow-light);color:#b45309}
+.status-badge.aprobado{background:var(--green-light);color:#15803d}
+.status-badge.rechazado{background:var(--red-light);color:var(--red)}
+.reg-actions{display:flex;gap:6px;margin-top:8px}
+.btn-xs{padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:none;display:flex;align-items:center;gap:3px}
+.btn-xs.edit{color:var(--blue);border-color:#93c5fd}
+.btn-xs.del{color:var(--red);border-color:#fca5a5}
+.empty{text-align:center;padding:2rem;color:var(--text2);font-size:13px}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:16px}
+.modal-bg.open{display:flex}
+.modal{background:var(--white);border-radius:14px;padding:20px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:16px}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:9px 18px;border-radius:99px;font-size:13px;display:none;z-index:999;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div class="login-wrap" id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="icon">🍓</div>
+      <h1>Formulario de trabajo</h1>
+      <p>Empresa Emily</p>
+    </div>
+    <div class="lfield">
+      <label>Selecciona tu nombre</label>
+      <select id="login-user">
+        <option value="">— Seleccionar técnico —</option>
+      </select>
+    </div>
+    <div class="lfield">
+      <label>Contraseña de acceso</label>
+      <input type="password" id="login-pin" placeholder="Ingresa tu contraseña" maxlength="20">
+    </div>
+    <button class="btn-full" onclick="doLogin()">Ingresar</button>
+    <div class="err-msg" id="login-err">Contraseña incorrecta.</div>
+  </div>
+</div>
+
+<div class="app" id="app-screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-icon">🍓</div>
+      <div>
+        <div class="topbar-name" id="bar-name">Técnico</div>
+        <div class="topbar-zona" id="bar-zona">—</div>
+      </div>
+    </div>
+    <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('nuevo',this)">Nuevo registro</button>
+    <button class="tab" onclick="showTab('mis',this)">Mis registros <span id="mis-count" style="font-size:11px;background:#f3f4f6;border-radius:99px;padding:1px 7px;margin-left:3px">0</span></button>
+  </div>
+  <div class="content">
+    <div id="tab-nuevo">
+      <div class="section">
+        <div class="section-title">👤 Datos del agricultor</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="ff"><label>Nombre completo *</label><input type="text" id="f-nombre" placeholder="Nombre y apellidos"></div>
+          <div class="grid2">
+            <div class="ff"><label>DNI <span class="badge-opt">opcional</span></label><input type="text" id="f-dni" placeholder="12345678" maxlength="8"></div>
+            <div class="ff"><label>Teléfono <span class="badge-opt">opcional</span></label><input type="tel" id="f-tel" placeholder="9XXXXXXXX" maxlength="9"></div>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">📍 Ubicación</div>
+        <div class="grid2">
+          <div class="ff"><label>Zona *</label><input type="text" id="f-zona" placeholder="Ej: Zona Norte"></div>
+          <div class="ff"><label>Sector *</label><input type="text" id="f-sector" placeholder="Ej: Sector A1"></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">🌱 Datos de la parcela</div>
+        <div class="grid3">
+          <div class="ff"><label>Área (ha) *</label><input type="number" id="f-area" placeholder="0.00" step="0.01" min="0"></div>
+          <div class="ff"><label>Variedad *</label>
+            <select id="f-variedad">
+              <option value="">Seleccionar</option>
+              <option>Sabrina</option><option>Marisol</option><option>San Andrea</option>
+            </select>
+          </div>
+          <div class="ff"><label>Riego *</label>
+            <select id="f-riego">
+              <option value="">Seleccionar</option>
+              <option>Tecnificado</option><option>Gravedad</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="ff"><label>Acopiadora <span class="badge-opt">opcional</span></label>
+            <select id="f-acopiadora" onchange="toggleOtraAcop()">
+              <option value="">Seleccionar...</option>
+              <option>Mebol</option><option>Chavin</option><option>Virú</option>
+              <option>Santa Sofía</option><option>Frutos Tropicales</option>
+              <option>Domino's</option><option>Del Andes</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+        </div>
+        <div id="f-otra-wrap" style="display:none;margin-top:8px">
+          <div class="ff"><label>Especificar acopiadora</label><input type="text" id="f-otra-acop" placeholder="Nombre de la acopiadora"></div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="ff"><label>Observaciones <span class="badge-opt">opcional</span></label><textarea id="f-obs" placeholder="Notas adicionales..."></textarea></div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn green" onclick="guardar()">💾 Guardar registro</button>
+        <button class="btn" onclick="limpiar()">↺ Limpiar</button>
+      </div>
+    </div>
+    <div id="tab-mis" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <span style="font-size:13px;color:var(--text2)">Tus registros guardados</span>
+        <button class="btn blue" onclick="exportarExcel()">📥 Descargar mi reporte Excel</button>
+      </div>
+      <div id="mis-lista"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="modal-title">✏️ Editar registro</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="ff"><label>Nombre completo *</label><input type="text" id="e-nombre"></div>
+      <div class="grid2">
+        <div class="ff"><label>DNI</label><input type="text" id="e-dni" maxlength="8"></div>
+        <div class="ff"><label>Teléfono</label><input type="tel" id="e-tel" maxlength="9"></div>
+      </div>
+      <div class="grid2">
+        <div class="ff"><label>Zona *</label><input type="text" id="e-zona"></div>
+        <div class="ff"><label>Sector *</label><input type="text" id="e-sector"></div>
+      </div>
+      <div class="grid3">
+        <div class="ff"><label>Área (ha) *</label><input type="number" id="e-area" step="0.01" min="0"></div>
+        <div class="ff"><label>Variedad *</label>
+          <select id="e-variedad">
+            <option>Sabrina</option><option>Marisol</option><option>San Andrea</option>
+          </select>
+        </div>
+        <div class="ff"><label>Riego *</label>
+          <select id="e-riego"><option>Tecnificado</option><option>Gravedad</option></select>
+        </div>
+      </div>
+      <div class="ff"><label>Acopiadora</label>
+        <select id="e-acopiadora" onchange="toggleOtraAcopEdit()">
+          <option value="">Ninguna</option>
+          <option>Mebol</option><option>Chavin</option><option>Virú</option>
+          <option>Santa Sofía</option><option>Frutos Tropicales</option>
+          <option>Domino's</option><option>Del Andes</option>
+          <option value="Otros">Otros</option>
+        </select>
+      </div>
+      <div id="e-otra-wrap" style="display:none">
+        <div class="ff"><label>Especificar acopiadora</label><input type="text" id="e-otra-acop" placeholder="Nombre"></div>
+      </div>
+      <div class="ff"><label>Observaciones</label><textarea id="e-obs"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn green" onclick="guardarEdicion()">✔ Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY_TECNICOS='fresa_tecnicos';
+const KEY_REGISTROS='fresa_registros';
+const SHEETS_URL='https://script.google.com/macros/s/AKfycbw74hog5RxO8d0mM5gB7ktkiX1Wd6CTyanSLvGfPRTM2MGYrSDDepv65Ky_8P7I5bH4jw/exec';
+
+function defaultTecnicos(){
+  return[
+    {id:'t1',nombre:'Quineche',pin:'quineche',zonas:[]},
+    {id:'t2',nombre:'Gonzales',pin:'gonzales',zonas:[]},
+    {id:'t3',nombre:'Robles',pin:'robles',zonas:[]}
+  ];
+}
+
+function getTecnicos(){try{return JSON.parse(localStorage.getItem(KEY_TECNICOS))||defaultTecnicos();}catch(e){return defaultTecnicos();}}
+function getRegistros(){try{return JSON.parse(localStorage.getItem(KEY_REGISTROS))||[];}catch(e){return[];}}
+function saveRegistros(d){localStorage.setItem(KEY_REGISTROS,JSON.stringify(d));}
+
+let currentUser=null,editIdx=-1;
+
+function initLogin(){
+  const tecns=getTecnicos();
+  const sel=document.getElementById('login-user');
+  sel.innerHTML='<option value="">— Seleccionar técnico —</option>';
+  tecns.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.nombre;sel.appendChild(o);});
+}
+
+function doLogin(){
+  const id=document.getElementById('login-user').value;
+  const pin=document.getElementById('login-pin').value;
+  const err=document.getElementById('login-err');
+  if(!id){err.style.display='block';err.textContent='Selecciona tu nombre.';return;}
+  const user=getTecnicos().find(t=>t.id===id);
+  if(!user||user.pin!==pin){err.style.display='block';err.textContent='Contraseña incorrecta.';return;}
+  err.style.display='none';
+  currentUser=user;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
+  document.getElementById('bar-name').textContent=user.nombre;
+  document.getElementById('bar-zona').textContent=user.zonas&&user.zonas.length?'Zonas: '+user.zonas.join(', '):'Sin zonas asignadas';
+  renderMisRegistros();
+}
+
+function logout(){
+  currentUser=null;
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('login-pin').value='';
+  document.getElementById('login-user').value='';
+}
+
+function showTab(tab,btn){
+  document.getElementById('tab-nuevo').style.display=tab==='nuevo'?'block':'none';
+  document.getElementById('tab-mis').style.display=tab==='mis'?'block':'none';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  if(tab==='mis')renderMisRegistros();
+}
+
+function toggleOtraAcop(){
+  const v=document.getElementById('f-acopiadora').value;
+  document.getElementById('f-otra-wrap').style.display=v==='Otros'?'block':'none';
+  if(v!=='Otros')document.getElementById('f-otra-acop').value='';
+}
+
+function toggleOtraAcopEdit(){
+  const v=document.getElementById('e-acopiadora').value;
+  document.getElementById('e-otra-wrap').style.display=v==='Otros'?'block':'none';
+}
+
+function guardar(){
+  const n=document.getElementById('f-nombre').value.trim();
+  const z=document.getElementById('f-zona').value.trim();
+  const s=document.getElementById('f-sector').value.trim();
+  const a=document.getElementById('f-area').value.trim();
+  const v=document.getElementById('f-variedad').value;
+  const r=document.getElementById('f-riego').value;
+  if(!n||!z||!s||!a||!v||!r){showToast('Completa los campos obligatorios (*)');return;}
+  const acopSel=document.getElementById('f-acopiadora').value;
+  const acopiadora=acopSel==='Otros'?document.getElementById('f-otra-acop').value.trim():acopSel;
+  const registro={
+    id:'reg_'+Date.now(),
+    tecnico_id:currentUser.id,tecnico:currentUser.nombre,
+    nombre:n,dni:document.getElementById('f-dni').value.trim(),
+    telefono:document.getElementById('f-tel').value.trim(),
+    zona:z,sector:s,area:parseFloat(a).toFixed(2),
+    variedad:v,riego:r,acopiadora:acopiadora,
+    observaciones:document.getElementById('f-obs').value.trim(),
+    estado:'Pendiente',
+    fecha:new Date().toLocaleDateString('es-PE'),
+    hora:new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})
+  };
+  const d=getRegistros();
+  d.push(registro);
+  saveRegistros(d);
+  limpiar();
+  renderMisRegistros();
+  showToast('✅ Registro guardado');
+  enviarASheets(registro);
+}
+
+function enviarASheets(registro){
+  if(!navigator.onLine){showToast('⚠️ Sin internet, guardado localmente');return;}
+  fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(registro)})
+  .then(()=>showToast('☁️ Enviado a Google Sheets'))
+  .catch(()=>showToast('⚠️ Error al enviar, guardado localmente'));
+}
+
+function limpiar(){
+  ['f-nombre','f-dni','f-tel','f-zona','f-sector','f-area','f-obs','f-otra-acop'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('f-variedad').value='';
+  document.getElementById('f-riego').value='';
+  document.getElementById('f-acopiadora').value='';
+  document.getElementById('f-otra-wrap').style.display='none';
+}
+
+function renderMisRegistros(){
+  if(!currentUser)return;
+  const all=getRegistros();
+  const d=all.filter(r=>r.tecnico_id===currentUser.id);
+  document.getElementById('mis-count').textContent=d.length;
+  const c=document.getElementById('mis-lista');
+  if(!d.length){c.innerHTML='<div class="empty">📋 Aún no tienes registros guardados.</div>';return;}
+  c.innerHTML=d.map(r=>{
+    const i=all.findIndex(x=>x.id===r.id);
+    return`<div class="reg-card">
+      <div class="reg-header">
+        <div class="reg-name">${r.nombre}</div>
+        <span class="status-badge ${r.estado.toLowerCase()}">${r.estado}</span>
+      </div>
+      <div class="reg-meta">
+        <span class="pill zona">📍 ${r.zona} › ${r.sector}</span>
+        <span class="pill area">🌿 ${r.area} ha</span>
+        <span class="pill var">🍓 ${r.variedad}</span>
+        <span class="pill">${r.riego}</span>
+        ${r.acopiadora?`<span class="pill acop">🏭 ${r.acopiadora}</span>`:''}
+      </div>
+      <div style="font-size:11px;color:var(--text2)">${r.fecha} ${r.hora}${r.observaciones?' · '+r.observaciones:''}</div>
+      ${r.estado==='Pendiente'?`<div class="reg-actions">
+        <button class="btn-xs edit" onclick="abrirEdicion(${i})">✏️ Editar</button>
+        <button class="btn-xs del" onclick="eliminar(${i})">🗑 Eliminar</button>
+      </div>`:'<div style="font-size:11px;color:var(--text2);margin-top:6px">Revisado por el administrador.</div>'}
+    </div>`;
+  }).join('');
+}
+
+function abrirEdicion(i){
+  const r=getRegistros()[i];editIdx=i;
+  document.getElementById('e-nombre').value=r.nombre||'';
+  document.getElementById('e-dni').value=r.dni||'';
+  document.getElementById('e-tel').value=r.telefono||'';
+  document.getElementById('e-zona').value=r.zona||'';
+  document.getElementById('e-sector').value=r.sector||'';
+  document.getElementById('e-area').value=r.area||'';
+  document.getElementById('e-variedad').value=r.variedad||'Sabrina';
+  document.getElementById('e-riego').value=r.riego||'Tecnificado';
+  document.getElementById('e-obs').value=r.observaciones||'';
+  const listaAcop=['Mebol','Chavin','Virú','Santa Sofía','Frutos Tropicales',"Domino's",'Del Andes'];
+  const acop=r.acopiadora||'';
+  if(listaAcop.includes(acop)){
+    document.getElementById('e-acopiadora').value=acop;
+    document.getElementById('e-otra-wrap').style.display='none';
+  }else if(acop){
+    document.getElementById('e-acopiadora').value='Otros';
+    document.getElementById('e-otra-acop').value=acop;
+    document.getElementById('e-otra-wrap').style.display='block';
+  }else{
+    document.getElementById('e-acopiadora').value='';
+    document.getElementById('e-otra-wrap').style.display='none';
+  }
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function cerrarModal(){document.getElementById('modal-bg').classList.remove('open');editIdx=-1;}
+
+function guardarEdicion(){
+  const n=document.getElementById('e-nombre').value.trim();
+  const z=document.getElementById('e-zona').value.trim();
+  const s=document.getElementById('e-sector').value.trim();
+  const a=document.getElementById('e-area').value.trim();
+  if(!n||!z||!s||!a){showToast('Completa los campos obligatorios');return;}
+  const acopSel=document.getElementById('e-acopiadora').value;
+  const acopiadora=acopSel==='Otros'?document.getElementById('e-otra-acop').value.trim():acopSel;
+  const d=getRegistros();
+  d[editIdx]={...d[editIdx],nombre:n,
+    dni:document.getElementById('e-dni').value.trim(),
+    telefono:document.getElementById('e-tel').value.trim(),
+    zona:z,sector:s,area:parseFloat(a).toFixed(2),
+    variedad:document.getElementById('e-variedad').value,
+    riego:document.getElementById('e-riego').value,
+    acopiadora:acopiadora,
+    observaciones:document.getElementById('e-obs').value.trim()
+  };
+  saveRegistros(d);cerrarModal();renderMisRegistros();showToast('✅ Registro actualizado');
+}
+
+function eliminar(i){
+  if(!confirm('¿Eliminar este registro?'))return;
+  const d=getRegistros();d.splice(i,1);saveRegistros(d);renderMisRegistros();showToast('Registro eliminado');
+}
+
+function exportarExcel(){
+  if(!currentUser)return;
+  const d=getRegistros().filter(r=>r.tecnico_id===currentUser.id);
+  if(!d.length){showToast('No hay registros para exportar');return;}
+  const rows=d.map(r=>({'Técnico':r.tecnico,'Nombre Agricultor':r.nombre,'DNI':r.dni||'','Teléfono':r.telefono||'','Zona':r.zona,'Sector':r.sector,'Área (ha)':parseFloat(r.area),'Variedad':r.variedad,'Riego':r.riego,'Acopiadora':r.acopiadora||'','Observaciones':r.observaciones||'','Estado':r.estado,'Fecha':r.fecha,'Hora':r.hora}));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Mis registros');
+  XLSX.writeFile(wb,`reporte_${currentUser.nombre}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('📥 Excel descargado');
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.style.display='block';
+  setTimeout(()=>t.style.display='none',2500);
+}
+
+document.getElementById('modal-bg').addEventListener('click',function(e){if(e.target===this)cerrarModal();});
+document.getElementById('login-pin').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+initLogin();
+</script>
+</body>
+</html>
