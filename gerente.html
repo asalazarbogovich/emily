@@ -173,7 +173,9 @@ async function cargarDesdeSheets(){
         sector:r['Sector']||'',area:r['Área (ha)']||'',
         variedad:r['Variedad']||'',riego:r['Riego']||'',
         acopiadora:r['Acopiadora']||'',observaciones:r['Observaciones']||'',
-        estado:'Pendiente',fecha:r['Fecha']||'',hora:r['Hora']||''
+        estado:'Pendiente',
+        fecha:formatearFechaObj(r['Fecha']),
+        hora:r['Hora']||''
       }));
       saveRegistros(registros);
       document.getElementById('sync-status').textContent='✅ '+registros.length+' registros cargados';
@@ -334,6 +336,15 @@ function renderAvance(){
   html+=`</div></div>`;c.innerHTML=html;
 }
 
+function formatearFechaObj(fecha){
+  if(!fecha)return'';
+  const d=new Date(fecha);
+  if(!isNaN(d.getTime())){
+    return`${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+  }
+  return fecha.toString().trim();
+}
+
 function parseFecha(str){
   if(!str)return null;
   const s=str.toString().trim();
@@ -341,12 +352,16 @@ function parseFecha(str){
   if(p.length===3)return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
   return null;
 }
+
 function fechaHoy(){
   const h=new Date();
   return`${h.getDate().toString().padStart(2,'0')}/${(h.getMonth()+1).toString().padStart(2,'0')}/${h.getFullYear()}`;
 }
+
 function mismaFecha(f1,f2){
-  const a=parseFecha(f1);const b=parseFecha(f2);
+  if(!f1||!f2)return false;
+  const a=parseFecha(f1.toString().trim());
+  const b=parseFecha(f2.toString().trim());
   if(!a||!b)return false;
   return a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
 }
