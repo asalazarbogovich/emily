@@ -310,7 +310,7 @@ function guardar(){
     variedad:v,riego:r,acopiadora:acopiadora,
     observaciones:document.getElementById('f-obs').value.trim(),
     estado:'Pendiente',sincronizado:false,
-    fecha:new Date().toLocaleDateString('es-PE'),
+    fecha:new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'}),
     hora:new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})
   };
   const d=getRegistros();d.push(registro);saveRegistros(d);
