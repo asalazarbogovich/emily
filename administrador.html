@@ -181,11 +181,18 @@ function parseFecha(str){
 
 function fechaHoy(){
   const h=new Date();
-  return`${h.getDate().toString().padStart(2,'0')}/${(h.getMonth()+1).toString().padStart(2,'0')}/${h.getFullYear()}`;
+  const dia=h.getDate().toString().padStart(2,'0');
+  const mes=(h.getMonth()+1).toString().padStart(2,'0');
+  const anio=h.getFullYear();
+  const fecha=`${dia}/${mes}/${anio}`;
+  console.log('Fecha hoy:', fecha);
+  return fecha;
 }
 
 function mismaFecha(f1,f2){
-  const a=parseFecha(f1);const b=parseFecha(f2);
+  if(!f1||!f2)return false;
+  const a=parseFecha(f1.toString().trim());
+  const b=parseFecha(f2.toString().trim());
   if(!a||!b)return false;
   return a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
 }
